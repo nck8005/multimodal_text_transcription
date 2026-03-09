@@ -151,11 +151,13 @@ export default function Sidebar({ rooms, activeRoomId, onSelectRoom, onNewChat, 
                                 const badge = result.match_type === 'transcription' ? 'voice'
                                     : result.match_type === 'semantic' ? 'semantic'
                                         : result.match_type === 'document' ? 'document'
-                                            : 'text';
+                                            : result.match_type === 'image' ? 'document'
+                                                : 'text';
                                 const badgeLabel = result.match_type === 'transcription' ? '🎙 Voice'
                                     : result.match_type === 'semantic' ? '✨ Semantic'
                                         : result.match_type === 'document' ? '📄 Doc'
-                                            : '💬 Text';
+                                            : result.match_type === 'image' ? '🖼 Image'
+                                                : '💬 Text';
                                 return (
                                     <div key={msg.id} className="search-result-item" onClick={() => onSelectSearchResult(result)}>
                                         <div className="search-result-header">

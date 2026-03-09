@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
 import { API_BASE } from '../config';
 
-export function VoiceMessage({ message, isSent, forceShowTranscript }) {
+export function VoiceMessage({ message, isSent, forceShowTranscript, hasTranscriptLens }) {
     const audioRef = useRef(null);
     const [playing, setPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
@@ -11,10 +11,9 @@ export function VoiceMessage({ message, isSent, forceShowTranscript }) {
 
     const src = message.file_url ? `${API_BASE}${message.file_url}` : null;
 
-    // Always show transcript in search context
     useEffect(() => {
-        if (forceShowTranscript) setShowTranscript(true);
-    }, [forceShowTranscript]);
+        if (forceShowTranscript && hasTranscriptLens) setShowTranscript(true);
+    }, [forceShowTranscript, hasTranscriptLens]);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -74,8 +73,7 @@ export function VoiceMessage({ message, isSent, forceShowTranscript }) {
                 </span>
             </div>
 
-            {/* Transcript toggle button */}
-            {message.is_transcribed && message.transcription && (
+            {hasTranscriptLens && message.is_transcribed && message.transcription && (
                 <div className="voice-transcript-toggle">
                     <button
                         className="transcript-btn"
@@ -92,8 +90,7 @@ export function VoiceMessage({ message, isSent, forceShowTranscript }) {
                 </div>
             )}
 
-            {/* Show "Transcribing..." only while still processing */}
-            {!message.is_transcribed && (
+            {hasTranscriptLens && !message.is_transcribed && (
                 <div className="transcribing-pulse" style={{ marginTop: 4 }}>
                     <div className="transcribing-dot" />
                     <div className="transcribing-dot" />

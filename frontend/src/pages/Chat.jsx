@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { Send, MessageSquare, X, Paperclip, Image, Film, FileText, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useExtension } from '../context/ExtensionContext';
 import { useWebSocket } from '../hooks/useWebSocket';
 import Sidebar from '../components/Sidebar';
 import { VoiceMessage } from '../components/VoiceMessage';
@@ -107,7 +108,7 @@ function MessageContextMenu({ x, y, isSender, onDeleteForMe, onDeleteForEveryone
 }
 
 // ─── Messages List ───────────────────────────────────────────────────────────
-function MessageList({ messages, currentUserId, activeRoomId, onDeleteMessage }) {
+function MessageList({ messages, currentUserId, activeRoomId, onDeleteMessage, hasTranscriptLens }) {
     const bottomRef = useRef(null);
     const [contextMenu, setContextMenu] = useState(null); // { x, y, msg }
 
@@ -174,7 +175,7 @@ function MessageList({ messages, currentUserId, activeRoomId, onDeleteMessage })
                             {!isSent && <div className="message-sender-name">{senderName}</div>}
 
                             {msg.message_type === 'voice' && (
-                                <VoiceMessage message={msg} isSent={isSent} />
+                                <VoiceMessage message={msg} isSent={isSent} hasTranscriptLens={hasTranscriptLens} />
                             )}
 
                             {msg.message_type === 'image' && (
@@ -230,6 +231,8 @@ function MessageList({ messages, currentUserId, activeRoomId, onDeleteMessage })
 // ─── Main Chat Page ──────────────────────────────────────────────────────────
 export default function Chat() {
     const { user, token } = useAuth();
+    const { hasExtension } = useExtension();
+    const hasTranscriptLens = hasExtension('transcript-lens');
     const [rooms, setRooms] = useState([]);
     const [activeRoom, setActiveRoom] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -446,6 +449,7 @@ export default function Chat() {
                                 currentUserId={user?.id}
                                 activeRoomId={activeRoom?.id}
                                 onDeleteMessage={handleDeleteMessage}
+                                hasTranscriptLens={hasTranscriptLens}
                             />
                         )}
 

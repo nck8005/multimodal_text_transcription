@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     faiss_sentence_index_path: str = "./faiss_sentences.bin"
     faiss_sentence_map_path: str = "./faiss_sentence_map.json"
+    faiss_image_index_path: str = "./faiss_image.bin"
+    faiss_image_map_path: str = "./faiss_image_map.json"
 
     class Config:
         env_file = ".env"

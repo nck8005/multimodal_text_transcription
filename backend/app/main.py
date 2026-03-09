@@ -36,8 +36,10 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────
-    print("[Shutdown] Saving FAISS index...")
+    print("[Shutdown] Saving FAISS indexes...")
     search_index._save_index()
+    search_index._save_sent_index()
+    search_index._save_img_index()
 
 
 app = FastAPI(
@@ -50,8 +52,13 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
-    allow_credentials=True,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "*",  # allow browser extensions (chrome-extension://, moz-extension://)
+    ],
+    allow_credentials=False,  # credentials=False required when using wildcard origin
     allow_methods=["*"],
     allow_headers=["*"],
 )

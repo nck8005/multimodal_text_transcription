@@ -11,9 +11,13 @@ settings = get_settings()
 _index = None
 _id_map: List[str] = []   # position → message_id
 
-# ─── Sentence-level index (new) ──────────────────────────────────────────────
+# ─── Sentence-level index (documents) ────────────────────────────────────────
 _sent_index = None
 _sent_map: List[Dict] = []   # position → {message_id, sentence}
+
+# ─── Chunk-level index (images) ──────────────────────────────────────────────
+_img_index = None
+_img_map: List[Dict] = []    # position → {message_id, chunk}
 
 _model = None
 _lock = threading.Lock()
@@ -33,22 +37,22 @@ def _get_model():
 # ─── Persistence helpers ──────────────────────────────────────────────────────
 
 def _load_index():
-    global _index, _id_map, _sent_index, _sent_map
+    global _index, _id_map, _sent_index, _sent_map, _img_index, _img_map
     import faiss
 
     # Message-level index
     if os.path.exists(settings.faiss_index_path) and os.path.exists(settings.faiss_id_map_path):
-        print("[FAISS] Loading existing index from disk")
+        print("[FAISS] Loading existing message index from disk")
         _index = faiss.read_index(settings.faiss_index_path)
         with open(settings.faiss_id_map_path, "r") as f:
             _id_map = json.load(f)
-        print(f"[FAISS] Loaded index with {_index.ntotal} vectors")
+        print(f"[FAISS] Loaded message index with {_index.ntotal} vectors")
     else:
-        print("[FAISS] Creating new flat L2 index")
+        print("[FAISS] Creating new flat L2 message index")
         _index = faiss.IndexFlatL2(EMBEDDING_DIM)
         _id_map = []
 
-    # Sentence-level index
+    # Sentence-level index (documents)
     if os.path.exists(settings.faiss_sentence_index_path) and os.path.exists(settings.faiss_sentence_map_path):
         print("[FAISS] Loading existing sentence index from disk")
         _sent_index = faiss.read_index(settings.faiss_sentence_index_path)
@@ -59,6 +63,18 @@ def _load_index():
         print("[FAISS] Creating new sentence index")
         _sent_index = faiss.IndexFlatL2(EMBEDDING_DIM)
         _sent_map = []
+
+    # Chunk-level index (images)
+    if os.path.exists(settings.faiss_image_index_path) and os.path.exists(settings.faiss_image_map_path):
+        print("[FAISS] Loading existing image index from disk")
+        _img_index = faiss.read_index(settings.faiss_image_index_path)
+        with open(settings.faiss_image_map_path, "r") as f:
+            _img_map = json.load(f)
+        print(f"[FAISS] Loaded image index with {_img_index.ntotal} vectors")
+    else:
+        print("[FAISS] Creating new image chunk index")
+        _img_index = faiss.IndexFlatL2(EMBEDDING_DIM)
+        _img_map = []
 
 
 def _save_index():
@@ -75,13 +91,20 @@ def _save_sent_index():
         json.dump(_sent_map, f)
 
 
+def _save_img_index():
+    import faiss
+    faiss.write_index(_img_index, settings.faiss_image_index_path)
+    with open(settings.faiss_image_map_path, "w") as f:
+        json.dump(_img_map, f)
+
+
 def initialize():
     """Call once on app startup."""
     _load_index()
     _get_model()  # warm up model
 
 
-# ─── Message-level add / search (unchanged) ───────────────────────────────────
+# ─── Message-level add / search ───────────────────────────────────────────────
 
 def add_embedding(message_id: str, text: str):
     """Encode text and add to message-level FAISS index."""
@@ -120,7 +143,7 @@ def search(query: str, top_k: int = 20) -> List[str]:
             return []
 
 
-# ─── Sentence-level add / search (new) ───────────────────────────────────────
+# ─── Sentence-level add / search (documents) ─────────────────────────────────
 
 def add_document_sentences(message_id: str, sentences: List[str]):
     """
@@ -155,7 +178,7 @@ def search_sentences(query: str, top_k: int = 10) -> List[Dict]:
             model = _get_model()
             query_vec = model.encode([query], normalize_embeddings=True)
             query_vec = np.array(query_vec, dtype=np.float32)
-            k = min(top_k * 3, _sent_index.ntotal)   # fetch extra, deduplicate by message
+            k = min(top_k * 3, _sent_index.ntotal)
             distances, indices = _sent_index.search(query_vec, k)
             seen_msgs = set()
             results = []
@@ -171,4 +194,58 @@ def search_sentences(query: str, top_k: int = 10) -> List[Dict]:
             return results
         except Exception as e:
             print(f"[FAISS] Sentence search failed: {e}")
+            return []
+
+
+# ─── Chunk-level add / search (images) ───────────────────────────────────────
+
+def add_image_chunks(message_id: str, chunks: List[str]):
+    """
+    Encode each OCR text chunk and add to the image-level FAISS index.
+    Each entry in _img_map stores {message_id, chunk}.
+    """
+    if not chunks:
+        return
+    with _lock:
+        try:
+            model = _get_model()
+            embeddings = model.encode(chunks, normalize_embeddings=True, show_progress_bar=False)
+            embeddings = np.array(embeddings, dtype=np.float32)
+            _img_index.add(embeddings)
+            for c in chunks:
+                _img_map.append({"message_id": message_id, "chunk": c})
+            _save_img_index()
+            print(f"[FAISS] Indexed {len(chunks)} image chunks for message {message_id}")
+        except Exception as e:
+            print(f"[FAISS] Failed to index image chunks for {message_id}: {e}")
+
+
+def search_image_chunks(query: str, top_k: int = 10) -> List[Dict]:
+    """
+    Return list of {message_id, chunk} dicts most semantically similar to query.
+    Deduplicates: only the best-matching chunk per message is returned.
+    """
+    if _img_index is None or _img_index.ntotal == 0:
+        return []
+    with _lock:
+        try:
+            model = _get_model()
+            query_vec = model.encode([query], normalize_embeddings=True)
+            query_vec = np.array(query_vec, dtype=np.float32)
+            k = min(top_k * 3, _img_index.ntotal)
+            distances, indices = _img_index.search(query_vec, k)
+            seen_msgs = set()
+            results = []
+            for idx in indices[0]:
+                if 0 <= idx < len(_img_map):
+                    entry = _img_map[idx]
+                    mid = entry["message_id"]
+                    if mid not in seen_msgs:
+                        seen_msgs.add(mid)
+                        results.append(entry)
+                        if len(results) >= top_k:
+                            break
+            return results
+        except Exception as e:
+            print(f"[FAISS] Image chunk search failed: {e}")
             return []

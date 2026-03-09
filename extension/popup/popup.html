@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TranscriptLens</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 320px;
+            min-height: 480px;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #e2e8f0;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 16px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .header .logo {
+            font-size: 22px;
+        }
+
+        .header h1 {
+            font-size: 17px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .badge {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 9px;
+            background: rgba(167, 139, 250, 0.18);
+            color: #a78bfa;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 12px 16px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6b7280;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+
+        .status-dot.ok {
+            background: #34d399;
+            box-shadow: 0 0 6px #34d399;
+        }
+
+        .status-dot.err {
+            background: #f87171;
+        }
+
+        #status-text {
+            opacity: 0.8;
+        }
+
+        .section {
+            padding: 0 16px 12px;
+        }
+
+        .section label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #a78bfa;
+            background: rgba(167, 139, 250, 0.08);
+        }
+
+        input::placeholder {
+            color: #475569;
+        }
+
+        .hint {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            padding: 4px 16px 14px;
+        }
+
+        button {
+            flex: 1;
+            padding: 9px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #btn-save {
+            background: linear-gradient(135deg, #7c3aed, #2563eb);
+            color: #fff;
+        }
+
+        #btn-save:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        #btn-test {
+            background: rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #btn-test:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.07);
+            margin: 4px 16px 12px;
+        }
+
+        .features {
+            padding: 0 16px 14px;
+        }
+
+        .features h2 {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .feature-item .icon {
+            font-size: 16px;
+        }
+
+        .feature-item .label {
+            color: #cbd5e1;
+        }
+
+        .feature-item .tag {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            color: #475569;
+            padding: 8px 16px 14px;
+        }
+
+        .footer a {
+            color: #7c3aed;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <span class="logo">🎙</span>
+        <h1>TranscriptLens</h1>
+        <span class="badge">MV3</span>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Not connected — configure below</span>
+    </div>
+
+    <div class="section">
+        <label>Backend URL</label>
+        <input id="backend-url" type="text" placeholder="http://localhost:8000" />
+        <p class="hint">Your FastAPI server address</p>
+    </div>
+
+    <div class="section">
+        <label>Auth Token (JWT)</label>
+        <input id="auth-token" type="password" placeholder="Paste your access token here" />
+        <p class="hint">Copy from browser DevTools → Application → any request Authorization header</p>
+    </div>
+
+    <div class="section">
+        <label>Room ID (optional)</label>
+        <input id="room-id" type="text" placeholder="UUID of target chat room" />
+        <p class="hint">Files will be sent to this room for indexing</p>
+    </div>
+
+    <div class="btn-row">
+        <button id="btn-save">💾 Save</button>
+        <button id="btn-test">🔌 Test</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="features">
+        <h2>Active Features</h2>
+        <div class="feature-item">
+            <span class="icon">🎤</span>
+            <span class="label">Voice → Text (Whisper)</span>
+            <span class="tag">Live</span>
+        </div>
+        <div class="feature-item">
+            <span class="icon">📄</span>
+            <span class="label">Document → Text (PDF/DOCX)</span>
+            <span class="tag">Live</span>
+        </div>
+        <div class="feature-item">
+            <span class="icon">🖼</span>
+            <span class="label">Image → Text (OCR)</span>
+            <span class="tag">Live</span>
+        </div>
+        <div class="feature-item">
+            <span class="icon">🔍</span>
+            <span class="label">Semantic Search (FAISS)</span>
+            <span class="tag">Live</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        <a href="#" id="open-app">Open Chat App ↗</a>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

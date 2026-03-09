@@ -89,7 +89,28 @@ async def search_messages(
         )
         sentence_messages = sent_result.scalars().all()
 
-    # ── 4. Merge results ──────────────────────────────────────────────────────
+    # ── 4. Image-chunk search via FAISS ─────────────────────────────────────
+    image_hits = search_index.search_image_chunks(q, top_k=10)
+    image_message_ids = list({h["message_id"] for h in image_hits if _is_valid_uuid(h["message_id"])})
+    image_chunk_map = {}  # message_id → best chunk
+    for h in image_hits:
+        mid = h["message_id"]
+        if mid not in image_chunk_map:
+            image_chunk_map[mid] = h["chunk"]
+
+    image_messages = []
+    if image_message_ids:
+        img_result = await db.execute(
+            select(models.Message)
+            .options(selectinload(models.Message.sender))
+            .where(and_(
+                *base_conditions,
+                models.Message.id.in_([uuid.UUID(mid) for mid in image_message_ids]),
+            ))
+        )
+        image_messages = img_result.scalars().all()
+
+    # ── 5. Merge results ──────────────────────────────────────────────────────
     seen_ids = set()
     results = []
 
@@ -103,6 +124,9 @@ async def search_messages(
         if msg.transcription and q.lower() in (msg.transcription or "").lower():
             if msg.message_type == "document":
                 match_type = "document"
+                searchable = msg.transcription
+            elif msg.message_type == "image":
+                match_type = "image"
                 searchable = msg.transcription
             else:
                 match_type = "transcription"
@@ -140,6 +164,20 @@ async def search_messages(
             message=schemas.MessageOut.model_validate(msg),
             snippet=snippet,
             match_type="document",
+            score=0.75,
+        ))
+
+    # Image OCR chunk hits
+    for msg in image_messages:
+        if str(msg.id) in seen_ids:
+            continue
+        seen_ids.add(str(msg.id))
+        best_chunk = image_chunk_map.get(str(msg.id), "")
+        snippet = _extract_snippet(best_chunk, q) if best_chunk else ""
+        results.append(schemas.SearchResult(
+            message=schemas.MessageOut.model_validate(msg),
+            snippet=snippet,
+            match_type="image",
             score=0.75,
         ))
 

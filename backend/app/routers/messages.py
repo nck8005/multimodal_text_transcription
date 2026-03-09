@@ -165,6 +165,17 @@ async def send_attachment(
             AsyncSessionLocal,
         )
 
+    # For images: run OCR + chunk + index in background
+    if message_type == models.MessageType.image:
+        from app.database import AsyncSessionLocal
+        background_tasks.add_task(
+            _process_image,
+            str(message.id),
+            file_path,
+            str(room_id),
+            AsyncSessionLocal,
+        )
+
     return message
 
 
@@ -205,6 +216,46 @@ async def _process_document(message_id: str, file_path: str, room_id: str, db_se
                 print(f"[DocIndex] Indexed {len(sentences)} sentences for message {message_id}")
         except Exception as e:
             print(f"[DocIndex] Error processing document {message_id}: {e}")
+
+
+
+async def _process_image(message_id: str, file_path: str, room_id: str, db_session_factory):
+    """Background task: OCR image, chunk text, index in FAISS, update DB."""
+    from app.services import image_service
+    async with db_session_factory() as db:
+        try:
+            # Extract text via OCR
+            text = image_service.extract_text_from_image(file_path)
+            if not text.strip():
+                print(f"[ImageOCR] No text found in {file_path}")
+                return
+
+            # Chunk and index
+            chunks = image_service.chunk_text(text)
+            search_index.add_image_chunks(message_id, chunks)
+
+            # Persist OCR text as transcription
+            result = await db.execute(
+                select(models.Message)
+                .options(selectinload(models.Message.sender))
+                .where(models.Message.id == message_id)
+            )
+            message = result.scalar_one_or_none()
+            if message:
+                message.transcription = text[:4000]   # cap to avoid huge DB values
+                message.is_transcribed = True
+                await db.commit()
+                await db.refresh(message)
+
+                # Broadcast so frontend shows the OCR text
+                msg_out = schemas.MessageOut.model_validate(message)
+                await broadcast_message(room_id, {
+                    "type": "transcription_update",
+                    "message": msg_out.model_dump(mode="json"),
+                })
+                print(f"[ImageOCR] Indexed {len(chunks)} chunks for message {message_id}")
+        except Exception as e:
+            print(f"[ImageOCR] Error processing image {message_id}: {e}")
 
 
 @router.post("/{room_id}/voice", response_model=schemas.MessageOut)

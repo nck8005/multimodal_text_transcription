@@ -2,9 +2,8 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, DateTime, ForeignKey,
-    Text, Enum as SAEnum
+    Text, Enum as SAEnum, Uuid
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
@@ -21,7 +20,7 @@ class MessageType(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
@@ -38,11 +37,11 @@ class User(Base):
 class Room(Base):
     __tablename__ = "rooms"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=True)
     is_group = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by = Column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     members = relationship("RoomMember", back_populates="room")
     messages = relationship("Message", back_populates="room", order_by="Message.created_at")
@@ -51,9 +50,9 @@ class Room(Base):
 class RoomMember(Base):
     __tablename__ = "room_members"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    room_id = Column(Uuid(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     joined_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_admin = Column(Boolean, default=False)
 
@@ -64,9 +63,9 @@ class RoomMember(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
-    sender_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    room_id = Column(Uuid(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
+    sender_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=True)          # text content or None for voice
     message_type = Column(SAEnum(MessageType), default=MessageType.text)
     file_path = Column(String(512), nullable=True)  # voice/image file path

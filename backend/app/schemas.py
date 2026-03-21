@@ -76,6 +76,7 @@ class MessageOut(BaseModel):
     content: Optional[str]
     message_type: str
     file_url: Optional[str] = None
+    file_path: Optional[str] = None
     transcription: Optional[str] = None
     is_transcribed: bool = False
     is_deleted: bool = False

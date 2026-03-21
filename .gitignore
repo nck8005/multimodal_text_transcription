@@ -1,0 +1,45 @@
+# Common ignores
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+.env.*
+!.env.example
+
+# FAISS and data files (optional, but often ignored if they can be regenerated)
+backend/faiss_*.bin
+backend/faiss_*_map.json
+backend/uploads/
+backend/my_audio/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+Thumbs.db
+db.sqlite3

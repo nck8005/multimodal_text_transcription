@@ -30,6 +30,14 @@ async def search_messages(
     )
     user_room_ids = [r[0] for r in rooms_result.fetchall()]
 
+    # Also include Local Storage room for everyone
+    local_room_result = await db.execute(
+        select(models.Room.id).where(models.Room.name == "Local Audio Storage")
+    )
+    local_room_id = local_room_result.scalar_one_or_none()
+    if local_room_id and local_room_id not in user_room_ids:
+        user_room_ids.append(local_room_id)
+
     if not user_room_ids:
         return schemas.SearchResponse(query=q, results=[], total=0)
 
@@ -182,6 +190,48 @@ async def search_messages(
         ))
 
     return schemas.SearchResponse(query=q, results=results, total=len(results))
+
+
+@router.post("/open-local")
+async def open_local_file(
+    data: schemas.MessageOut, # We reuse MessageOut or a simple dict
+    current_user: models.User = Depends(get_current_user),
+):
+    import os
+    if not data.file_path:
+        raise HTTPException(status_code=400, detail="No file path provided")
+    
+    if not os.path.exists(data.file_path):
+        raise HTTPException(status_code=404, detail="File does not exist on disk")
+    
+    try:
+        # os.startfile is Windows only, which matches the USER's OS
+        os.startfile(data.file_path)
+        return {"status": "ok", "message": f"Opened {data.file_path}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to open file: {e}")
+
+
+@router.post("/locate-local")
+async def locate_local_file(
+    data: schemas.MessageOut,
+    current_user: models.User = Depends(get_current_user),
+):
+    import os
+    import subprocess
+    if not data.file_path:
+        raise HTTPException(status_code=400, detail="No file path provided")
+    
+    if not os.path.exists(data.file_path):
+        raise HTTPException(status_code=404, detail="File does not exist on disk")
+    
+    try:
+        # explorer /select,"path" opens the folder and highlights the file
+        # Using list form of subprocess.run for safety
+        subprocess.run(['explorer', '/select,', os.path.normpath(data.file_path)])
+        return {"status": "ok", "message": f"Located {data.file_path}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to locate file: {e}")
 
 
 def _extract_snippet(text: str, query: str, window: int = 80) -> str:
